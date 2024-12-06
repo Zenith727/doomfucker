@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doomfucker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 0;
+    }
+    input, button {
+      margin: 5px 0;
+      padding: 10px;
+      font-size: 16px;
+      width: 100%;
+      max-width: 300px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .column {
+      padding: 10px;
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
+      overflow-wrap: break-word;
+    }
+    .column h3 {
+      text-align: center;
+      font-size: 1.2em;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Doom cock n balls inspection</h1>
+  <label>Server Seed:</label>
+  <input id="serverSeed" type="text" placeholder="Enter server seed">
+  <label>Number of Packs (0 to x):</label>
+  <input id="packs" type="number" placeholder="Enter number of packs">
+  <label>Threshold:</label>
+  <input id="threshold" type="number" placeholder="Enter threshold" value="100000">
+  <button onclick="checkTickets()">Check Tickets</button>
+  <br>
+  <br>
+  <br>
+  <label>Client Seed 1:</label>
+  <input id="clientSeed1" type="text" placeholder="Enter client seed 1">
+  <label>Client Seed 2:</label>
+  <input id="clientSeed2" type="text" placeholder="Enter client seed 2">
+  <label>Client Seed 3:</label>
+  <input id="clientSeed3" type="text" placeholder="Enter client seed 3">
+  <label>Client Seed 4:</label>
+  <input id="clientSeed4" type="text" placeholder="Enter client seed 4">
+  <div class="grid" id="results"></div>
+
+  <script>
+    // Helper function to hash a value using SHA-512
+    const sha512 = (value) => {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(value);
+      const digest = crypto.subtle.digest('SHA-512', data);
+      return digest.then((buffer) =>
+        Array.from(new Uint8Array(buffer))
+          .map(byte => byte.toString(16).padStart(2, '0'))
+          .join('')
+      );
+    };
+
+    // Function to combine client seed, server seed, and nonce
+    const combineSeeds = async (clientSeed, serverSeed, nonce) =>
+      await sha512(`${clientSeed}:${serverSeed}:${nonce}`);
+
+    // Function to calculate the ticket number from a hash
+    const getTicketNumber = (hash) => {
+      const hashInt = BigInt('0x' + hash);
+      const maxInt = BigInt(1_000_000);
+      return Number((hashInt % maxInt) + BigInt(1));
+    };
+
+    // Main function to check tickets
+    async function checkTickets() {
+      const clientSeed1 = document.getElementById('clientSeed1').value.trim();
+      const clientSeed2 = document.getElementById('clientSeed2').value.trim();
+      const clientSeed3 = document.getElementById('clientSeed3').value.trim();
+      const clientSeed4 = document.getElementById('clientSeed4').value.trim();
+      const serverSeed = document.getElementById('serverSeed').value.trim();
+      const packs = parseInt(document.getElementById('packs').value, 10);
+      const threshold = parseInt(document.getElementById('threshold').value, 10);
+
+      // Validate input
+      if (!serverSeed) {
+        alert('Server seed is required.');
+        return;
+      }
+      if (isNaN(packs) || packs < 0) {
+        alert('Number of packs must be a non-negative number.');
+        return;
+      }
+
+      const clientSeeds = [clientSeed1, clientSeed2, clientSeed3, clientSeed4].filter(seed => seed);
+      if (clientSeeds.length === 0) {
+        alert('At least one client seed is required.');
+        return;
+      }
+
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = ''; // Clear previous results
+
+      const maxNonce = packs; // Generate nonces from 0 to packs
+
+      for (const clientSeed of clientSeeds) {
+        const column = document.createElement('div');
+        column.classList.add('column');
+        column.innerHTML = `<h3>Client Seed: "${clientSeed}"</h3>`;
+        let columnContent = '';
+
+        for (let nonce = 0; nonce <= maxNonce; nonce++) {
+          const combinedHash = await combineSeeds(clientSeed, serverSeed, nonce);
+          const ticketNumber = getTicketNumber(combinedHash);
+          const isUnderThreshold = ticketNumber < threshold ? `<strong style="color: red;">(LOW TICKET)</strong>` : '';
+
+          columnContent += `<p>Nonce: ${nonce} - Ticket Number: ${ticketNumber} ${isUnderThreshold}</p>`;
+        }
+
+        column.innerHTML += columnContent;
+        resultsDiv.appendChild(column);
+      }
+    }
+  </script>
+</body>
+</html>
